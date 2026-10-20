@@ -1,0 +1,69 @@
+{
+  "movies": {
+    "nmid": "INTEGER PRIMARY KEY",
+    "title": "TEXT NOT NULL",
+    "year": "INTEGER",
+    "rated": "TEXT",
+    "released": "DATE",
+    "runtime": "INTEGER",
+    "poster": "TEXT",
+    "plot": "TEXT",
+    "imdbid": "TEXT UNIQUE"
+  },
+  "people": {
+    "id": "INTEGER PRIMARY KEY",
+    "name": "TEXT NOT NULL",
+    "imdbid": "TEXT UNIQUE"
+  },
+  "movie_people": {
+    "movie_id": "INTEGER REFERENCES movies(nmid)",
+    "person_id": "INTEGER REFERENCES people(id)",
+    "role": "TEXT",
+    "PRIMARY KEY": [
+      "movie_id",
+      "person_id",
+      "role"
+    ]
+  },
+  "genres": {
+    "id": "INTEGER PRIMARY KEY",
+    "name": "TEXT NOT NULL UNIQUE"
+  },
+  "movie_genres": {
+    "movie_id": "INTEGER REFERENCES movies(nmid)",
+    "genre_id": "INTEGER REFERENCES genres(id)",
+    "PRIMARY KEY": [
+      "movie_id",
+      "genre_id"
+    ]
+  },
+  "languages": {
+    "id": "INTEGER PRIMARY KEY",
+    "name": "TEXT NOT NULL UNIQUE"
+  },
+  "movie_languages": {
+    "movie_id": "INTEGER REFERENCES movies(nmid)",
+    "language_id": "INTEGER REFERENCES languages(id)",
+    "PRIMARY KEY": [
+      "movie_id",
+      "language_id"
+    ]
+  },
+  "movie_ratings": {
+    "movie_id": "INTEGER NOT NULL REFERENCES movies(nmid)",
+    "rating": "REAL NOT NULL CHECK (rating BETWEEN 0 AND 10)",
+    "source": "TEXT NOT NULL",
+    "PRIMARY KEY": [
+      "movie_id",
+      "source"
+    ]
+  },
+  "movie_trailers": {
+    "movie_id": "INTEGER NOT NULL REFERENCES movies(nmid)",
+    "url": "TEXT NOT NULL",
+    "PRIMARY KEY": [
+      "movie_id",
+      "url"
+    ]
+  }
+}
