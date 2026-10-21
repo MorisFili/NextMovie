@@ -1,4 +1,4 @@
-﻿import {useState, useRef} from 'react'
+﻿import {useState, useRef, useCallback} from 'react'
 import {ActivityIndicator, FlatList, Keyboard, Text, TextInput, View} from "react-native"
 import {GestureHandlerRootView} from "react-native-gesture-handler"
 import MovieCard from "../components/MovieCard"
@@ -13,6 +13,19 @@ export default function Home() {
 
     const {loading, movieList, fetchMore, likedMovies, setPreference, search,
         setSearch, loadingMore, loggedIn} = getData()
+
+    const handleMoviePress = useCallback((movie, layout) => {
+        homeRef.current?.measureInWindow((x, y) => {
+            setSelectedMovie({
+                movie,
+                layout: {
+                    ...layout,
+                    x: layout.x - x,
+                    y: layout.y - y
+                }
+            });
+        });
+    }, []);
 
     if (loading) {
         return <LoadingScreen/>
@@ -43,13 +56,16 @@ export default function Home() {
                         }}
                     />
 
-                    <Text style={{color: mainTheme.muted, fontSize: 12, margin: 10}}>
+                    <Text style={{color: mainTheme.muted, fontSize: 12, margin: 10, fontWeight: "bold"}}>
                         Explore movies. Hold a poster, then swipe right to like, left to dislike, or up to clear.
                     </Text>
                 </>}
 
                 <View style={{flex: 1}} onTouchStart={Keyboard.dismiss}>
                     <FlatList
+                        initialNumToRender={12}
+                        maxToRenderPerBatch={9}
+                        windowSize={5}
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
                         numColumns={3}
@@ -72,25 +88,15 @@ export default function Home() {
                                 accessibilityLabel="Loading more movies"
                             />
                         ) : null}
-                        renderItem={({item}) => (
-                            <MovieCard
+                        renderItem={({item}) => {
+                            return <MovieCard
+                                loggedIn={loggedIn}
                                 movie={item}
                                 preference={likedMovies[item.nmid]}
                                 onSwipe={setPreference}
-                                onPress={(movie, layout) => {
-                                    homeRef.current?.measureInWindow((x, y) => {
-                                        setSelectedMovie({
-                                            movie: movie,
-                                            layout: {
-                                                ...layout,
-                                                x: layout.x - x,
-                                                y: layout.y - y
-                                            }
-                                        })
-                                    })
-                                }}
+                                onPress={handleMoviePress}
                             />
-                        )}
+                        }}
                     />
                 </View>
 

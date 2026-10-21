@@ -1,5 +1,5 @@
 import {Alert} from "react-native"
-import { createContext, useContext, useEffect, useRef, useState } from "react"
+import {createContext, useCallback, useContext, useEffect, useRef, useState} from "react"
 import * as SecureStore from "expo-secure-store"
 import {localhost} from './Settings'
 import {loadMovies} from "./DataLoader"
@@ -33,8 +33,6 @@ export function DataProvider({children}) {
         sortBy: "RANDOM",
         descending: true
     })
-
-    currentToken.current = sessionToken
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -131,6 +129,7 @@ export function DataProvider({children}) {
             try {
                 const token = await SecureStore.getItemAsync("sessionToken")
                 setSessionToken(token)
+                currentToken.current = token
                 await reqMovies(token, !!token)
             } catch {
                 showToast("Couldn't restore your session. Please try again.", true)
@@ -151,7 +150,7 @@ export function DataProvider({children}) {
         setMovieList(loadMovies(data))
     }
 
-    async function setPreference(movie, liked) {
+    const setPreference = useCallback(async (movie, liked) => {
         if (!loggedIn) {
             Alert.alert("Sign in", "Sign in to save your movie choices.")
             return
@@ -198,7 +197,7 @@ export function DataProvider({children}) {
         } finally {
             savingPreference.current = false
         }
-    }
+    }, [loggedIn, likedMovies, sessionToken])
 
     async function logout() {
         const response = await fetch(localhost + "auth/logout", {

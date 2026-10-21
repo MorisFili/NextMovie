@@ -1,12 +1,11 @@
 ﻿import {Image, StyleSheet, Text, useWindowDimensions, View} from "react-native"
-import {useRef} from "react"
+import React, {useRef} from "react"
 import {Gesture, GestureDetector} from "react-native-gesture-handler"
 import Animated, {useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated"
 import {scheduleOnRN} from "react-native-worklets"
 import {mainTheme} from "../layout/GlobalTheme"
-import {getData} from "../data/DataProvider";
 
-export default function MovieCard({movie, onPress, preference, onSwipe}) {
+function MovieCard({loggedIn, movie, onPress, preference, onSwipe}) {
     const cardRef = useRef(null)
     const swipeX = useSharedValue(0)
     const swipeY = useSharedValue(0)
@@ -14,8 +13,6 @@ export default function MovieCard({movie, onPress, preference, onSwipe}) {
 
     const {width} = useWindowDimensions()
     const cardWidth = (width - 40) / 3
-
-    const {loggedIn} = getData()
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{translateX: swipeX.value}, {translateY: swipeY.value}],
@@ -148,3 +145,5 @@ const style = StyleSheet.create({
     },
     ratingText: {color: "#fff", fontSize: 12, fontWeight: "bold"}
 })
+
+export default React.memo(MovieCard)
