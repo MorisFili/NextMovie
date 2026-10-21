@@ -74,7 +74,7 @@ export default function Home() {
                         style={{flex: 1}}
                         data={movieList}
                         extraData={likedMovies}
-                        onEndReached={fetchMore}
+                        onEndReached={movieList.length > 12 ? fetchMore : undefined}
                         onEndReachedThreshold={0.2}
                         keyExtractor={(movie) => movie.nmid}
                         ListEmptyComponent={

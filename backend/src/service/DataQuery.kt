@@ -16,8 +16,9 @@ object DataQuery {
         if (token == null || (userID == null && existingSession == null)) token = SessionToken.generate()
         val currentSessionId = existingSession ?: SessionManager.createNewSession(token, userID)
         val movies = SessionManager.pollMovies(currentSessionId, filterSettings = query.filterSettings)
+        val preferences = SessionManager.getPreferences(token)
 
-        return QueryResponse(token, movies, authorized = userID != null)
+        return QueryResponse(token, movies, preferences)
     }
 
     fun sync(request: SyncRequest, token: String, userID: Int) {

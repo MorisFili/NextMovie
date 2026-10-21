@@ -168,7 +168,8 @@ fun main() {
                     post("/query") {
                         val user = call.principal<AuthenticatedUser>()!!
                         val request = call.receive<QueryRequest>()
-                        call.respond(HttpStatusCode.OK, DataQuery.execute(request.copy(sessionToken = user.token), user.userID))
+                        val response = DataQuery.execute(request.copy(sessionToken = user.token), user.userID)
+                        call.respond(HttpStatusCode.OK, response)
                     }
 
                     post("/sync") {

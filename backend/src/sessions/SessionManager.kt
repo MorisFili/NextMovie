@@ -107,4 +107,8 @@ object SessionManager {
             }
         }
     }
+
+    fun getPreferences(token: String): Preferences? {
+        return sessions.values.find { it.token == token }?.preferences
+    }
 }

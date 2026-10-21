@@ -1,9 +1,9 @@
 import {Alert} from "react-native"
 import {createContext, useCallback, useContext, useEffect, useRef, useState} from "react"
 import * as SecureStore from "expo-secure-store"
-import {localhost} from './Settings'
+import {DEFAULT_FILTER, localhost} from './Settings'
 import {loadMovies} from "./DataLoader"
-import {fetchMovies, fetchFiltered, requestPreferences} from "./APICalls"
+import {fetchMoviesAuthorized, fetchFiltered, requestPreferences, fetchMovies} from "./APICalls"
 import {showToast} from "../components/Toast"
 
 const Context = createContext(null)
@@ -21,18 +21,43 @@ export function DataProvider({children}) {
     const [likedMovies, setLikedMovies] = useState({})
     const [loadingMore, setLoadingMore] = useState(false)
     const [search, setSearch] = useState("")
-    const [filter, setFilter] = useState({
-        movieName: "",
-        genres: [],
-        minRating: null,
-        maxRating: null,
-        minYear: null,
-        maxYear: null,
-        showLiked: false,
-        showDisliked: false,
-        sortBy: "RANDOM",
-        descending: true
-    })
+    const [filter, setFilter] = useState(DEFAULT_FILTER)
+
+    /* INIT */
+    useEffect(() => {
+        const start = async () => {
+            setLoading(true)
+            try {
+                const token = await SecureStore.getItemAsync("sessionToken")
+                setSessionToken(token)
+                currentToken.current = token
+                await startupSync(token)
+            } catch {
+                showToast("Couldn't restore your session. Please try again.", true)
+            } finally {
+                setLoading(false)
+            }
+        }
+        start()
+    }, [])
+
+    async function startupSync(sessionToken) {
+        let data
+        if (sessionToken) data = await fetchMoviesAuthorized(sessionToken)
+        if (!data) {
+            data = await fetchMovies(sessionToken)
+            setSessionToken(data.sessionToken)
+            currentToken.current = data.sessionToken
+        }
+        else {
+            showToast("Session restored.")
+            setLoggedIn(true)
+        }
+        setMovieList(loadMovies(data))
+        if (data.preferences.likedMovies) setLikedMovies(data.preferences.likedMovies)
+    }
+
+    /* ----------------- */
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -46,76 +71,85 @@ export function DataProvider({children}) {
         return () => clearTimeout(timeout)
     }, [search])
 
+
     useEffect(() => {
-        filterVersion.current++
-        const requestVersion = filterVersion.current
         if (!loggedIn) {
             setLoading(false)
             return
         }
         setLoading(true)
-        fetchFiltered(sessionToken, filter)
-            .then(data => {
-                if (requestVersion !== filterVersion.current) {
-                    return
-                }
-                setMovieList(loadMovies(data))
-                setLoggedIn(data.authorized === true)
-                if (!data.authorized) {
-                    setLikedMovies({})
+
+        filterVersion.current++
+        const requestVersion = filterVersion.current
+
+        async function fetch() {
+            try {
+                let data
+                data = await fetchFiltered(sessionToken, filter)
+
+                if (currentToken.current !== sessionToken || requestVersion !== filterVersion.current) return
+
+                if (!data) {
                     showToast("Your session expired. Sign in to use your saved movies.")
-                    setFilter(prev => ({...prev, showLiked: false, showDisliked: false}))
+                    setSessionToken(null)
+                    currentToken.current = null
+                    setLoggedIn(false)
+                    setLikedMovies({})
+                    setFilter(DEFAULT_FILTER)
+                    data = await fetchMovies()
+                    await SecureStore.setItemAsync("sessionToken", data.sessionToken)
                 }
+
+                setMovieList(loadMovies(data))
                 setSessionToken(data.sessionToken)
-                return SecureStore.setItemAsync("sessionToken", data.sessionToken)
-            })
-            .catch(() => {
+                currentToken.current = data.sessionToken
+                setLikedMovies(data.preferences.likedMovies)
+
+            } catch (e) {
                 if (requestVersion === filterVersion.current) {
                     showToast("Couldn't load movies. Check your connection and try again.", true)
                 }
-            })
-            .finally(() => {
+            } finally {
                 if (requestVersion === filterVersion.current) {
                     setLoading(false)
                 }
-            })
-        return () => {
-            filterVersion.current++
+            }
+
         }
+        fetch()
     }, [filter])
 
-    async function reqMovies(sessionToken, authorized = loggedIn) {
+    async function reqMovies(sessionToken) {
         const requestVersion = filterVersion.current
         try {
-            const data = await fetchMovies(sessionToken, authorized)
-            if (currentToken.current !== sessionToken) {
-                return
+            let data
+            if (loggedIn && sessionToken) data = await fetchMoviesAuthorized(sessionToken)
+
+            if (currentToken.current !== sessionToken || requestVersion !== filterVersion.current) return
+
+            if (!data) {
+                if (loggedIn) setLoggedIn(false)
+                if (filter !== DEFAULT_FILTER) setFilter(DEFAULT_FILTER)
+                data = await fetchMovies(sessionToken)
             }
-            if (authorized && requestVersion !== filterVersion.current) {
-                return
-            }
-            if (data.authorized && !loggedIn) {
-                const preferences = await requestPreferences(data.sessionToken)
-                setLikedMovies(preferences.likedMovies)
-            }
-            if (!data.authorized) {
-                setLikedMovies({})
-                if (authorized) {
-                    setFilter(previous => ({...previous, showLiked: false, showDisliked: false}))
-                }
-            }
+
+            if (currentToken.current !== sessionToken || requestVersion !== filterVersion.current) return
+
+            setLikedMovies(data.preferences.likedMovies)
+
+            let movies = [...movieList, ...loadMovies(data)]
 
             if (data.sessionToken && data.sessionToken !== sessionToken) {
+                // Different session fetched
                 await SecureStore.setItemAsync("sessionToken", data.sessionToken)
+                currentToken.current = data.sessionToken
                 setSessionToken(data.sessionToken)
+                setLikedMovies({})
+                movies = loadMovies(data)
             }
 
-            setMovieList(prev => {
-                const movies = authorized && !data.authorized ? loadMovies(data) : [...prev, ...loadMovies(data)]
-                return [...new Map(movies.map(movie => [movie.nmid, movie])).values()]
-                 // deduplication quickfix
-            })
-            setLoggedIn(data.authorized === true)
+            setMovieList([...new Map(movies.map(movie => [movie.nmid, movie])).values()]) // deduplication quickfix
+
         } catch (e) {
             if (requestVersion === filterVersion.current) {
                 showToast("Couldn't load movies. Check your connection and try again.", true)
@@ -123,31 +157,19 @@ export function DataProvider({children}) {
         }
     }
 
-    useEffect(() => {
-        const start = async () => {
-            setLoading(true)
-            try {
-                const token = await SecureStore.getItemAsync("sessionToken")
-                setSessionToken(token)
-                currentToken.current = token
-                await reqMovies(token, !!token)
-            } catch {
-                showToast("Couldn't restore your session. Please try again.", true)
-            } finally {
-                setLoading(false)
-            }
-        }
-        start()
-    }, [])
+    async function fetchMore() {
+        if (loading) return
+        if (loggedIn && (filter.showLiked || filter.showDisliked)) return
+        if (fetchingMovies.current) return
+        fetchingMovies.current = true
+        setLoadingMore(true)
 
-    async function completeLogin(data) {
-        const preferences = await requestPreferences(data.sessionToken)
-        await SecureStore.setItemAsync("sessionToken", data.sessionToken)
-        setSessionToken(data.sessionToken)
-        setLoggedIn(data.authorized === true)
-        setLikedMovies(preferences.likedMovies)
-        showToast("Signed in. Your movie choices are restored.")
-        setMovieList(loadMovies(data))
+        try {
+            await reqMovies(sessionToken)
+        } finally {
+            fetchingMovies.current = false
+            setLoadingMore(false)
+        }
     }
 
     const setPreference = useCallback(async (movie, liked) => {
@@ -199,42 +221,40 @@ export function DataProvider({children}) {
         }
     }, [loggedIn, likedMovies, sessionToken])
 
+    async function completeLogin(data) {
+        await SecureStore.setItemAsync("sessionToken", data.sessionToken)
+        setSessionToken(data.sessionToken)
+        currentToken.current = data.sessionToken
+        setLoggedIn(true)
+        showToast("Signed in. Your movie choices are restored.")
+        setMovieList(loadMovies(data))
+        setLikedMovies(data.preferences.likedMovies)
+    }
+
     async function logout() {
         const response = await fetch(localhost + "auth/logout", {
             method: "POST",
             headers: {"Authorization": "Bearer " + sessionToken},
         })
-        if (!response.ok && response.status !== 401) throw new Error("Couldn't sign out. Please try again.")
+        if (!response.ok && response.status !== 401) console.log("Couldn't sign out. Deleting locally")
 
         await SecureStore.deleteItemAsync("sessionToken")
         setSessionToken(null)
+        currentToken.current = null
         setLoggedIn(false)
         setLikedMovies({})
         showToast("Signed out.")
-        setFilter(prev => ({...prev, showLiked: false, showDisliked: false}))
+        setFilter(DEFAULT_FILTER)
         setMovieList([])
-        await reqMovies(null, false)
-    }
-
-    async function fetchMore() {
-        if (loading) return
-        if (loggedIn && (filter.showLiked || filter.showDisliked)) return
-        if (fetchingMovies.current) return
-        fetchingMovies.current = true
-        setLoadingMore(true)
-
-        try {
-            await reqMovies(sessionToken)
-        } finally {
-            fetchingMovies.current = false
-            setLoadingMore(false)
-        }
+        await reqMovies(null)
     }
 
     return (
-        <Context.Provider value={{ loading, setLoading, movieList, setMovieList,
+        <Context.Provider value={{
+            loading, setLoading, movieList, setMovieList,
             loggedIn, completeLogin, logout, likedMovies, setPreference, setSessionToken,
-            filter, setFilter, search, setSearch, loadingMore, fetchMore }}>
+            filter, setFilter, search, setSearch, loadingMore, fetchMore
+        }}>
             {children}
         </Context.Provider>
     )

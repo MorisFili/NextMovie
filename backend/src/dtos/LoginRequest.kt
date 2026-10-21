@@ -13,5 +13,5 @@ data class LoginRequest(
 data class LoginResponse(
     val sessionToken: String,
     val movies: List<Movie>,
-    val authorized: Boolean
+    val preferences: Preferences?
 )

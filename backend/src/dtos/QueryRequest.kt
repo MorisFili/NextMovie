@@ -14,5 +14,5 @@ data class QueryRequest(
 data class QueryResponse(
     val sessionToken: String?,
     val movies: List<Movie>,
-    val authorized: Boolean
+    val preferences: Preferences?
 )

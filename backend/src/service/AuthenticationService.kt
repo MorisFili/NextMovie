@@ -20,7 +20,9 @@ object AuthenticationService {
 
         val sessionID = generateSession(authenticatedUser.id, token)
 
-        return LoginResponse(token, SessionManager.pollMovies(sessionID), authorized = true)
+        val preferences = SessionManager.getPreferences(token)
+
+        return LoginResponse(token, SessionManager.pollMovies(sessionID), preferences)
     }
 
     fun register(request: LoginRequest): LoginResponse? {
@@ -33,7 +35,7 @@ object AuthenticationService {
 
         val sessionID = generateSession(newUser.id, token)
 
-        return LoginResponse(token, SessionManager.pollMovies(sessionID), authorized = true)
+        return LoginResponse(token, SessionManager.pollMovies(sessionID), preferences = null)
     }
 
     private fun generateSession(userID: Int, token: String) : String {

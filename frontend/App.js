@@ -5,7 +5,7 @@ import {NavigationContainer} from "@react-navigation/native"
 import {createNativeStackNavigator} from '@react-navigation/native-stack'
 import Header from './components/Header'
 import Home from './screens/Home'
-import Settings from './screens/Settings'
+import SettingsScreen from './screens/SettingsScreen'
 import {mainTheme} from './layout/GlobalTheme'
 import {DataProvider} from "./data/DataProvider"
 import Toast from "./components/Toast"
@@ -21,12 +21,12 @@ export default function App() {
             <NavigationBar hidden/>
             <NavigationContainer>
                 <DataProvider>
-                    <Stack.Navigator screenOptions={{
+                    <Stack.Navigator id={"1"} screenOptions={{
                         header: (navProps) => <Header {...navProps} styles={styles.header}/>,
                         contentStyle: styles.body
                     }}>
-                        <Stack.Screen name={"Home"} component={Home}/>
-                        <Stack.Screen name={"Settings"} component={Settings}/>
+                        <Stack.Screen navigationKey={"1"} name={"Home"} component={Home}/>
+                        <Stack.Screen navigationKey={"2"} name={"Settings"} component={SettingsScreen}/>
                     </Stack.Navigator>
                 </DataProvider>
             </NavigationContainer>

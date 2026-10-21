@@ -1,7 +1,6 @@
 import { useState } from "react"
 import {View, Text, TextInput, Pressable, StyleSheet} from "react-native"
 import { mainTheme } from "../../layout/GlobalTheme"
- // Adjust import path
 
 export default function CredentialInput({onLogin, onSignUp}) {
     const [username, setUsername] = useState("")

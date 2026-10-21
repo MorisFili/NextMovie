@@ -1,12 +1,12 @@
 ﻿import {useState} from "react"
-import {KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View} from "react-native"
+import {KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View} from "react-native"
 
 import {getData} from "../data/DataProvider"
 import {mainTheme} from "../layout/GlobalTheme"
 import {DEFAULT_FILTER, GENRES} from "../data/Settings"
 import {showToast} from "../components/Toast"
 
-export default function Settings({navigation}) {
+export default function SettingsScreen({navigation}) {
     const {filter, setFilter, setSearch, loggedIn, loading} = getData()
 
     const [filterSettings, setFilterSettings] = useState({
@@ -31,7 +31,6 @@ export default function Settings({navigation}) {
             ? null : Number(String(filterSettings.maxYear).replace(",", "."))
 
 
-        // Inputs use IMDb's 0–10 scale; the API expects scores out of 100.
         if (
             (minRating !== null && (!Number.isFinite(minRating) || minRating < 0 || minRating > 10 ||
                 !Number.isInteger(minRating * 10))) ||
@@ -48,7 +47,6 @@ export default function Settings({navigation}) {
         }
 
 
-        // Validate years.
         if (
             (minYear !== null && (!Number.isInteger(minYear) || minYear < 1 || minYear > 9999)) ||
             (maxYear !== null && (!Number.isInteger(maxYear) || maxYear < 1 || maxYear > 9999))
@@ -68,18 +66,19 @@ export default function Settings({navigation}) {
             minRating: minRating === null ? null : minRating * 10,
             maxRating: maxRating === null ? null : maxRating * 10,
             minYear,
-            maxYear
+            maxYear,
+            movieName: ""
         })
 
-        setSearch(filterSettings.movieName)
-        navigation.goBack()
+        setSearch("")
+        navigation.navigate("Home")
     }
 
 
     return (
         <KeyboardAvoidingView
             style={styles.screen}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior={"padding"}
         >
             <ScrollView
                 contentContainerStyle={styles.content}

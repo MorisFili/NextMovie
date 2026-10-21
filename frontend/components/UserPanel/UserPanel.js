@@ -1,10 +1,10 @@
-import {ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, useWindowDimensions, View} from "react-native"
+import {ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, useWindowDimensions, View} from "react-native"
 import {mainTheme} from "../../layout/GlobalTheme"
 import {StyleSheet} from "react-native"
 import {useRef, useState} from "react"
 import Animated, {interpolate, useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated"
 import CredentialInput from "./CredentialInput"
-import {onLogin, onSignUp} from "./AuthenticationLogic"
+import {authenticate} from "../../data/APICalls"
 import {getData} from "../../data/DataProvider"
 import LoggedInView from "./LoggedInView"
 
@@ -63,6 +63,9 @@ export function UserPanel() {
             setProcessingInteraction(false)
         }
     }
+
+    const onLogin = (username, password) => authenticate("login", username, password)
+    const onSignUp = (username, password) => authenticate("register", username, password)
 
     async function signOut() {
         setProcessingInteraction(true)
