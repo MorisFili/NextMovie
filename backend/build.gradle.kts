@@ -47,23 +47,6 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.test {
-    useJUnitPlatform()
-    // Database tests must never open the application's real database.
-    val testWorkspace = layout.buildDirectory.dir("test-workspace").get().asFile
-    workingDir(testWorkspace)
-    doFirst {
-        testWorkspace.resolve("backend/data").mkdirs()
-    }
-}
-
-tasks.register<JavaExec>("seedMovies") {
-    group = "application"
-    description = "Seed the movie database from movies_with_trailers.json (optional -Pdataset=path)."
-    dependsOn(tasks.testClasses)
-    classpath = sourceSets["test"].runtimeClasspath
-    mainClass.set("SeedMovieDatabase")
+tasks.named<JavaExec>("run") {
     workingDir(rootProject.projectDir.parentFile)
-    maxHeapSize = "512m"
-    providers.gradleProperty("dataset").orNull?.let { args(it) }
 }
