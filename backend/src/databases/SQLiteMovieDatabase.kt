@@ -15,7 +15,7 @@ import java.sql.ResultSet
 object SQLiteMovieDatabase : MovieDatabase, AutoCloseable {
 
     private val persistentConnection: Connection =
-        DriverManager.getConnection("jdbc:sqlite:./backend/data/nextmovie_movie.db")
+        DriverManager.getConnection("jdbc:sqlite:./backend/data/nextmovie_movie_demo.db")
 
     init {
         try {

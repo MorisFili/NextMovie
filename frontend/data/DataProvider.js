@@ -226,27 +226,32 @@ export function DataProvider({children}) {
         setSessionToken(data.sessionToken)
         currentToken.current = data.sessionToken
         setLoggedIn(true)
-        showToast("Signed in. Your movie choices are restored.")
         setMovieList(loadMovies(data))
-        setLikedMovies(data.preferences.likedMovies)
+        const preferences = await requestPreferences(data.sessionToken, "GET")
+        setLikedMovies(preferences?.likedMovies ?? {})
+        showToast("Signed in. Your movie choices are restored.")
     }
 
     async function logout() {
-        const response = await fetch(localhost + "auth/logout", {
-            method: "POST",
-            headers: {"Authorization": "Bearer " + sessionToken},
-        })
-        if (!response.ok && response.status !== 401) console.log("Couldn't sign out. Deleting locally")
-
-        await SecureStore.deleteItemAsync("sessionToken")
-        setSessionToken(null)
-        currentToken.current = null
-        setLoggedIn(false)
-        setLikedMovies({})
-        showToast("Signed out.")
-        setFilter(DEFAULT_FILTER)
-        setMovieList([])
-        await reqMovies(null)
+        try {
+            const response = await fetch(localhost + "auth/logout", {
+                method: "POST",
+                headers: {"Authorization": "Bearer " + sessionToken},
+            })
+            if (!response.ok && response.status !== 401) console.log("Couldn't sign out. Deleting locally")
+        } catch (e) {
+            console.log("Couldn't sign out. Deleting locally")
+        } finally {
+            await SecureStore.deleteItemAsync("sessionToken")
+            setSessionToken(null)
+            currentToken.current = null
+            setLoggedIn(false)
+            setLikedMovies({})
+            showToast("Signed out.")
+            setFilter(DEFAULT_FILTER)
+            setMovieList([])
+            await reqMovies(null)
+        }
     }
 
     return (
