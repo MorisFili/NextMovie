@@ -25,7 +25,13 @@ function MovieCard({loggedIn, movie, onPress, preference, onSwipe}) {
         elevation: selected.value ? 8 : style.card.elevation
     }))
 
-    const handlePress = () => {
+    const handlePress = (event) => {
+        const action = event?.nativeEvent?.actionName
+
+        if (loggedIn && ["like", "dislike", "remove"].includes(action)) {
+            return onSwipe(movie, {like: true, dislike: false, remove: null}[action])
+        }
+
         cardRef.current?.measureInWindow((x, y, width, height) => {
             onPress(movie, {x, y, width, height})
         })
@@ -71,7 +77,11 @@ function MovieCard({loggedIn, movie, onPress, preference, onSwipe}) {
 
     return (
         <GestureDetector gesture={gesture}>
-            <Animated.View ref={cardRef} style={[style.card, {width: cardWidth}, animatedStyle]}>
+            <Animated.View ref={cardRef} style={[style.card, {width: cardWidth}, animatedStyle]}
+                accessible accessibilityRole="button"
+                accessibilityLabel={`${movie.Title}, IMDb ${movie.imdbRating}${preference == null ? "" : preference ? ", liked" : ", disliked"}`}
+                accessibilityActions={[{name: "activate", label: "Open details"}, ...(loggedIn ? [{name: "like", label: "Like"}, {name: "dislike", label: "Dislike"}, {name: "remove", label: "Remove choice"}] : [])]}
+                onAccessibilityAction={handlePress} onAccessibilityTap={handlePress}>
                 <Image style={style.image} resizeMode="cover" source={{uri: movie.Poster}}/>
 
                 <View>

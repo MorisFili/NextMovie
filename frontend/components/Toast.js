@@ -1,4 +1,4 @@
-import {Text, StyleSheet} from "react-native"
+import {AccessibilityInfo, Text, StyleSheet} from "react-native"
 import {useEffect, useState} from "react"
 import Animated, {useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated"
 
@@ -7,6 +7,7 @@ let setToastRef
 export function showToast(message, error = false) {
     if (setToastRef) {
         setToastRef({message: message, error: error})
+        AccessibilityInfo.announceForAccessibility(message)
     }
 }
 

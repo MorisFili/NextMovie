@@ -72,7 +72,8 @@ export default function CredentialInput({onLogin, onSignUp}) {
                 <View style={styles.line} />
             </View>
 
-            <Pressable style={styles.oauthButton} onPress={null}>
+            <Pressable style={[styles.oauthButton, styles.oauthButtonDisabled]} onPress={null} disabled={true}
+                       accessibilityRole="button" accessibilityState={{disabled: true}}>
                 <Text style={styles.oauthText}>Continue with Google</Text>
             </Pressable>
         </View>
@@ -167,6 +168,11 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         justifyContent: "center",
         alignItems: "center"
+    },
+    oauthButtonDisabled: {
+        opacity: 0.5,
+        backgroundColor: mainTheme.muted + "15",
+        borderColor: mainTheme.muted + "60",
     },
     oauthText: {
         color: mainTheme.text,

@@ -1,8 +1,9 @@
 import {localhost} from "./Settings"
+import {ServerError, AuthenticationError} from "./Errors";
 
 
 export async function fetchMovies(sessionToken) {
-    const response  = await fetch(localhost + "default", {
+    const response = await fetch(localhost + "default", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -12,33 +13,33 @@ export async function fetchMovies(sessionToken) {
         })
     })
 
+    if (response.status >= 500) throw new ServerError("Unable to connect to server.")
     if (!response.ok) throw new Error("Couldn't load movies. Please try again.")
 
     return response.json()
 }
 
 export async function fetchMoviesAuthorized(sessionToken) {
-        const response  = await fetch(localhost + "query", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + sessionToken,
-            },
-            body: JSON.stringify({
-                sessionToken: sessionToken
-            })
+    const response = await fetch(localhost + "query", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + sessionToken,
+        },
+        body: JSON.stringify({
+            sessionToken: sessionToken
         })
+    })
 
-        if (response.status === 401) {
-            return null // token expired
-        }
-        if (!response.ok) throw new Error("Couldn't load movies. Please try again.")
+    if (response.status === 401) throw new AuthenticationError("Session token expired.")
+    if (response.status >= 500) throw new ServerError("Unable to connect to server.")
+    if (!response.ok) throw new Error("Couldn't load movies. Please try again.")
 
-        return response.json()
+    return response.json()
 }
 
 export async function fetchFiltered(sessionToken, filterSettings) {
-    const response  = await fetch(localhost + "query", {
+    const response = await fetch(localhost + "query", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -50,8 +51,8 @@ export async function fetchFiltered(sessionToken, filterSettings) {
         })
     })
 
-    if (response.status === 401) return null // token expired
-
+    if (response.status === 401) throw new AuthenticationError("Session token expired.")
+    if (response.status >= 500) throw new ServerError("Unable to connect to server.")
     if (!response.ok) throw new Error("Couldn't load movies. Please try again.")
 
     return response.json()
@@ -84,9 +85,8 @@ export async function requestPreferences(sessionToken, method = "GET", movieId, 
         throw new Error("Couldn't connect. Check your connection and try again.")
     }
 
-    if (response.status === 401) {
-        throw new Error("Your session expired. Please sign in again.")
-    }
+    if (response.status === 401) throw new AuthenticationError("Session token expired.")
+    if (response.status >= 500) throw new ServerError("Unable to connect to server.")
     if (!response.ok) {
         throw new Error("Couldn't save or load your movie choices. Please try again.")
     }
@@ -108,12 +108,11 @@ export async function authenticate(action, username, password) {
             }),
         })
 
-        if (response.status === 401) {
-            throw new Error("Incorrect username or password.")
-        }
+        if (response.status === 401) throw new AuthenticationError("Incorrect username or password.")
         if (response.status === 417) {
             throw new Error("That username is already registered. Try signing in.")
         }
+        if (response.status >= 500) throw new ServerError("Unable to connect to server.")
         if (!response.ok) {
             throw new Error("Couldn't sign in or register. Please try again.")
         }
@@ -126,6 +125,6 @@ export async function authenticate(action, username, password) {
         if (error instanceof TypeError) {
             throw new Error("Couldn't connect. Check your connection and try again.")
         }
-        throw new Error(error.message)
+        throw error
     }
 }

@@ -5,6 +5,7 @@ import {DEFAULT_FILTER, localhost} from './Settings'
 import {loadMovies} from "./DataLoader"
 import {fetchMoviesAuthorized, fetchFiltered, requestPreferences, fetchMovies} from "./APICalls"
 import {showToast} from "../components/Toast"
+import {AuthenticationError} from "./Errors";
 
 const Context = createContext(null)
 
@@ -33,7 +34,7 @@ export function DataProvider({children}) {
                 currentToken.current = token
                 await startupSync(token)
             } catch {
-                showToast("Couldn't restore your session. Please try again.", true)
+                showToast("Unable to connect to server, trying again..", true)
             } finally {
                 setLoading(false)
             }
@@ -43,16 +44,34 @@ export function DataProvider({children}) {
 
     async function startupSync(sessionToken) {
         let data
-        if (sessionToken) data = await fetchMoviesAuthorized(sessionToken)
-        if (!data) {
-            data = await fetchMovies(sessionToken)
-            setSessionToken(data.sessionToken)
-            currentToken.current = data.sessionToken
+        while (!data) {
+            if (sessionToken) {
+                try {
+                    data = await fetchMoviesAuthorized(sessionToken)
+                    showToast("Session restored.")
+                    setLoggedIn(true)
+                    break
+                } catch (e) {
+                    if (e instanceof AuthenticationError) {
+                        await clearSession()
+                        sessionToken = null
+                    } else {
+                        showToast("Unable to connect, retrying..")
+                        await new Promise(resolve => setTimeout(resolve, 2000))
+                        continue
+                    }
+                }
+            }
+
+            try {
+                data = await fetchMovies(sessionToken)
+            } catch (e) {
+                showToast("Unable to connect, retrying..")
+                await new Promise(resolve => setTimeout(resolve, 2000))
+            }
         }
-        else {
-            showToast("Session restored.")
-            setLoggedIn(true)
-        }
+        setSessionToken(data.sessionToken)
+        currentToken.current = data.sessionToken
         setMovieList(loadMovies(data))
         if (data.preferences.likedMovies) setLikedMovies(data.preferences.likedMovies)
     }
@@ -73,10 +92,7 @@ export function DataProvider({children}) {
 
 
     useEffect(() => {
-        if (!loggedIn) {
-            setLoading(false)
-            return
-        }
+        if (!loggedIn) return
         setLoading(true)
 
         filterVersion.current++
@@ -106,6 +122,8 @@ export function DataProvider({children}) {
                 setLikedMovies(data.preferences.likedMovies)
 
             } catch (e) {
+                if (currentToken.current !== sessionToken) return
+                if (e instanceof AuthenticationError) return clearSession()
                 if (requestVersion === filterVersion.current) {
                     showToast("Couldn't load movies. Check your connection and try again.", true)
                 }
@@ -116,6 +134,7 @@ export function DataProvider({children}) {
             }
 
         }
+
         fetch()
     }, [filter])
 
@@ -151,6 +170,8 @@ export function DataProvider({children}) {
             setMovieList([...new Map(movies.map(movie => [movie.nmid, movie])).values()]) // deduplication quickfix
 
         } catch (e) {
+            if (currentToken.current !== sessionToken) return
+            if (e instanceof AuthenticationError) return clearSession()
             if (requestVersion === filterVersion.current) {
                 showToast("Couldn't load movies. Check your connection and try again.", true)
             }
@@ -213,8 +234,11 @@ export function DataProvider({children}) {
                 showToast("Added to disliked movies.")
             }
         } catch (error) {
-            if (currentToken.current === sessionToken) {
-                Alert.alert("Couldn't save movie choice", error.message)
+            if (currentToken.current !== sessionToken) return
+            if (currentToken.current === sessionToken) Alert.alert("Couldn't save movie choice", error.message)
+            if (error instanceof AuthenticationError) {
+                showToast("Session expired, please log in again")
+                await clearSession()
             }
         } finally {
             savingPreference.current = false
@@ -222,13 +246,13 @@ export function DataProvider({children}) {
     }, [loggedIn, likedMovies, sessionToken])
 
     async function completeLogin(data) {
+        const preferences = await requestPreferences(data.sessionToken, "GET")
         await SecureStore.setItemAsync("sessionToken", data.sessionToken)
         setSessionToken(data.sessionToken)
         currentToken.current = data.sessionToken
-        setLoggedIn(true)
         setMovieList(loadMovies(data))
-        const preferences = await requestPreferences(data.sessionToken, "GET")
         setLikedMovies(preferences?.likedMovies ?? {})
+        setLoggedIn(true)
         showToast("Signed in. Your movie choices are restored.")
     }
 
@@ -242,16 +266,20 @@ export function DataProvider({children}) {
         } catch (e) {
             console.log("Couldn't sign out. Deleting locally")
         } finally {
-            await SecureStore.deleteItemAsync("sessionToken")
-            setSessionToken(null)
-            currentToken.current = null
-            setLoggedIn(false)
-            setLikedMovies({})
+            await clearSession()
             showToast("Signed out.")
-            setFilter(DEFAULT_FILTER)
-            setMovieList([])
-            await reqMovies(null)
         }
+    }
+
+    async function clearSession() {
+        await SecureStore.deleteItemAsync("sessionToken").catch(console.error)
+        setSessionToken(null)
+        currentToken.current = null
+        setLoggedIn(false)
+        setLikedMovies({})
+        setFilter(DEFAULT_FILTER)
+        setMovieList([])
+        await reqMovies(null)
     }
 
     return (

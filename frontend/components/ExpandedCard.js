@@ -62,13 +62,13 @@ export default function ExpandedCard({movie, onClose, layout}) {
             <Animated.View style={[styles.expanded, animatedStyle]}>
                 {expanded && (
                     <ScrollView contentContainerStyle={{gap: 15}}>
-                        <Pressable accessibilityRole="button" onPress={close}>
+                        <Pressable accessibilityRole="button" accessibilityLabel="Close movie details" onPress={close}>
                             <Text style={styles.text}>✕ Close</Text>
                         </Pressable>
 
                         <Trailer movie={movie}/>
 
-                        <Text style={styles.title}>{movie.Title}</Text>
+                        <Text accessibilityRole="header" style={styles.title}>{movie.Title}</Text>
                         <Text style={styles.text}>{movie.Genre}</Text>
                         <Text style={styles.text}>{movie.Plot}</Text>
 
